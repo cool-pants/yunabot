@@ -1,0 +1,18 @@
+{
+    "319714726219087872": [
+        {
+            "id": "47fe0fbc-3039-47c0-b7ad-ad21cd048936",
+            "name": "Primordial Touch",
+            "description": "A creature killed by this damage disintigrates.",
+            "to_hit": 9,
+            "damage": "2d6+5[force]+2d6[necrotic]"
+        },
+        {
+            "id": "d6ef7be7-6757-4876-bddb-9cd86b8d73d9",
+            "name": "Trident Strike",
+            "description": "*Range:* 5ft. Additionally on a hit, the first 10 ft. of movement the target takes on its following turn is made in a random direction.",
+            "to_hit": 9,
+            "damage": "2d8+5[piercing]+3d6[necrotic]"
+        }
+    ]
+}
