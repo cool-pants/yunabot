@@ -1,11 +1,15 @@
 from dis import disco
 import logging
+from random import choices
 import discord
 from discord.ext import commands
 from discord import app_commands
 import uuid
 import json
 import os
+from d20 import CritType, roll, AdvType
+
+from utils import parse_damage_string, compute_crit
 
 # Bot token and logging
 TOKEN = os.getenv('TOKEN')
@@ -99,4 +103,51 @@ async def list_slash(interaction: discord.Interaction):
     msg.extend([str(atk) for atk in attack])
     await interaction.response.send_message("\n".join(msg))
 
-bot.run(TOKEN, log_handler=handler, log_level=logging.DEBUG)
+async def attacks_autocomplete(
+    interaction: discord.Interaction,
+    current: str,
+) -> list[app_commands.Choice[int]]:
+    return [
+    app_commands.Choice(name=atk.name, value=i)
+    for i, atk in enumerate(ATTACKS[str(interaction.user.id)])
+]
+
+@bot.tree.command(name='multiattack', description='Multiattack using saved attacks', guild=GUILD)
+@app_commands.describe(attack='Choice of attack from saved attacks', count='Number of iterations of the attack', adv="Roll at advantage or not")
+@app_commands.autocomplete(attack=attacks_autocomplete)
+async def multiatk_slash(interaction: discord.Interaction, attack: int, dc: int, count: int=1, adv: bool=False):
+    logger.debug(f"Interaction User ID {interaction.user.id}")
+    
+    msg = []
+    selected_atk = ATTACKS[str(interaction.user.id)][attack]
+
+    total_dmg = 0
+
+    embed_var = discord.Embed(color=discord.Color.red(), title="**Prepare to die!!**")
+    embed_var.add_field(name=f'Attacking with {selected_atk.name}', value=f'{count} attacks against DC {dc}!!', inline=False)
+
+    for i in range(count):
+        to_hit = f"1d20+{selected_atk.to_hit}"
+        to_hit_roll = roll(to_hit, advantage=AdvType.ADV if adv else AdvType.NONE)
+        damage_string = selected_atk.damage
+
+        if to_hit_roll.crit == CritType.CRIT:
+            damages = parse_damage_string(dmg_str=damage_string)
+            damage_string = compute_crit(damages=damages)
+        
+        damage_roll = roll(damage_string)
+
+        if to_hit_roll.total < dc and to_hit_roll.crit != CritType.CRIT:
+            embed_var.add_field(name=f'Attack number {i}', value=f'To hit: {to_hit_roll}\n Misses!!\n', inline=False)
+            continue
+
+        embed_var.add_field(name=f'Attack number {i}', value=f'To hit: {to_hit_roll}{" CRITS!!" if to_hit_roll.crit==CritType.CRIT else ""}\nDamage: {damage_roll}\n Total Damage: {damage_roll.total}\n', inline=False)
+        total_dmg += damage_roll.total
+    
+    embed_var.add_field(name=f'Total Damage', value=total_dmg, inline=False)
+
+    await interaction.response.send_message(embed=embed_var)
+
+
+if __name__ == "__main__":
+    bot.run(TOKEN, log_handler=handler, log_level=logging.DEBUG)
