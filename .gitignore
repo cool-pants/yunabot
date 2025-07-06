@@ -208,3 +208,6 @@ __marimo__/
 
 # Environment Files
 *.env
+
+# Local files
+attacks.json
